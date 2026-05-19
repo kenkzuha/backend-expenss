@@ -31,7 +31,9 @@ export class UsersService {
       const newData = this.usersRepository.create({...usersData, password: hashedPassword});
       const savedUser = await this.usersRepository.save(newData);
       const { password, ...withoutPassword } = savedUser;
-      return withoutPassword;
+      return {
+        savedUserSuccess: "Account created successfully! Please log in",
+      };
 
     } catch (error) {
       throw new InternalServerErrorException('Register Failed, Internal Server Error');

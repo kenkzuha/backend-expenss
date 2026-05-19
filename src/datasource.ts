@@ -1,12 +1,9 @@
+import 'dotenv/config';
 import { DataSource }  from "typeorm";
 
 export const AppDataSource = new DataSource({
-  type: 'mariadb',
-  host: 'localhost',
-  port: 3306,
-  username: 'root',
-  password: '',
-  database: 'expenss',
+  type: 'postgres',
+  url: process.env.DB_URL,
   synchronize: false,
   logging: true,
   entities: [__dirname + '/**/*.entity{.ts,.js}'],

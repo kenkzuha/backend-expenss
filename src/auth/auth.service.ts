@@ -10,7 +10,7 @@ export class AuthService {
   constructor(private readonly usersService: UsersService, private readonly jwtService: JwtService){}
 
   saveUsers(usersData: UsersDto){
-    if(usersData.password)
+
 
     return this.usersService.saveUsers(usersData);
   }
@@ -28,13 +28,10 @@ export class AuthService {
       throw new UnauthorizedException('Invalid Credentials');
     }
 
-    const { password, ...result } = user;
-
     const payload = { sub: user.userId, username: user.username };
 
     return {
-      message: "Login Successful",
-      user: result,
+      message: "Login Successful !!!. Redirecting Now",
       access_token: await this.jwtService.signAsync(payload)
     };
   }
