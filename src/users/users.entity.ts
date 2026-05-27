@@ -13,4 +13,7 @@ export class UsersEntity {
 
   @Column()
   password!: string;
+
+  @Column({ default: false })
+  isEmailVerified!: boolean;
 }

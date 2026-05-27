@@ -19,7 +19,7 @@
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json",
     "typeorm": "ts-node ./node_modules/typeorm/cli.js -d src/datasource.ts",
-    "migration:generate": "npm run typeorm migration:generate -- ./migrations/InitialCreate",
+    "migration:generate": "npm run typeorm -- migration:generate",
     "migration:run": "npm run typeorm migration:run",
     "migration:create": "npx typeorm migration:create ./migrations/ManualMigration",
     "migration:revert": "npm run typeorm migration:revert"
@@ -31,12 +31,19 @@
     "@nestjs/platform-express": "^11.0.1",
     "@nestjs/typeorm": "^11.0.1",
     "@types/bcrypt": "^6.0.0",
+    "@types/cookie-parser": "^1.4.10",
+    "@types/nodemailer": "^8.0.0",
+    "@types/ua-parser-js": "^0.7.39",
     "bcrypt": "^6.0.0",
+    "cookie-parser": "^1.4.7",
+    "ioredis": "^5.11.0",
     "mysql": "^2.18.1",
+    "nodemailer": "^8.0.9",
     "pg": "^8.21.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
-    "typeorm": "^0.3.29"
+    "typeorm": "^0.3.29",
+    "ua-parser-js": "^2.0.10"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.2.0",
@@ -46,6 +53,7 @@
     "@nestjs/testing": "^11.0.1",
     "@types/express": "^5.0.0",
     "@types/jest": "^30.0.0",
+    "@types/mocha": "^10.0.10",
     "@types/node": "^22.10.7",
     "@types/supertest": "^6.0.2",
     "eslint": "^9.18.0",

@@ -30,7 +30,6 @@ export class UsersService {
       const hashedPassword = await bcrypt.hash(usersData.password, 10);
       const newData = this.usersRepository.create({...usersData, password: hashedPassword});
       const savedUser = await this.usersRepository.save(newData);
-      const { password, ...withoutPassword } = savedUser;
       return {
         savedUserSuccess: "Account created successfully! Please log in",
       };
@@ -42,6 +41,14 @@ export class UsersService {
 
   async findUser(username: string){
     return await this.usersRepository.findOne({ where: {username} });
+  }
+
+  async findUserByEmail(email: string) {
+    return await this.usersRepository.findOne({ where: { email } });
+  }
+
+  async markEmailVerified(userId: number) {
+    await this.usersRepository.update({ userId }, { isEmailVerified: true });
   }
 
 }
