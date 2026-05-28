@@ -9,7 +9,7 @@ export class RedisService implements OnModuleDestroy {
     await this.client.set(key, value, 'EX', ttlSeconds);
   }
 
-  async get(key: string): Promise<String | null> {
+  async get(key: string): Promise<string | null> {
     return this.client.get(key);
   }
 

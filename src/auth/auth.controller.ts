@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, Query, Req, Res, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Headers, Post, Query, Req, Res, UseGuards } from '@nestjs/common';
 import { UsersDto } from 'src/users/users.dto';
 import { AuthService } from './auth.service';
 import { LoginDto } from './auth.dto';
@@ -10,8 +10,11 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post('signup')
-  async saveUsers(@Body() usersData: UsersDto) {
-    return this.authService.saveUsers(usersData);
+  async saveUsers(
+    @Body() usersData: UsersDto,
+    @Headers('accept-language') lang: string,
+  ) {
+    return this.authService.saveUsers(usersData, lang || 'en');
   }
 
   @Post('login')

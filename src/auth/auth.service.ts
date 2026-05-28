@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { ConflictException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { UsersDto } from 'src/users/users.dto';
 import { UsersService } from 'src/users/users.service';
 import { LoginDto } from './auth.dto';
@@ -6,6 +6,12 @@ import bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
 import { RedisService } from 'src/redis/redis.service';
 import { EmailService } from 'src/email/email.service';
+
+interface PendingSignup {
+  username: string;
+  email: string;
+  hashedPassword: string;
+}
 
 @Injectable()
 export class AuthService {
@@ -16,26 +22,32 @@ export class AuthService {
     private readonly emailService: EmailService,
   ) {}
 
-  async saveUsers(usersData: UsersDto) {
-    await this.usersService.saveUsers(usersData);
+  async saveUsers(usersData: UsersDto, lang: string = 'en') {
+    const existingEmail = await this.usersService.findUserByEmail(usersData.email);
+    if (existingEmail) throw new ConflictException('Email already taken');
 
-    const user = await this.usersService.findUserByEmail(usersData.email);
+    const existingUsername = await this.usersService.findUser(usersData.username);
+    if (existingUsername) throw new ConflictException('Username already taken');
+
+    const hashedPassword = await bcrypt.hash(usersData.password, 10);
 
     const token = await this.jwtService.signAsync(
-      { sub: user!.userId, email: user!.email, type: 'email-verify' },
+      { email: usersData.email, type: 'email-verify' },
       { expiresIn: '15m' },
     );
 
-    await this.redisService.set(`verify:${token}`, String(user!.userId), 900);
+    const pending: PendingSignup = {
+      username: usersData.username,
+      email: usersData.email,
+      hashedPassword,
+    };
+    await this.redisService.set(`pending:${token}`, JSON.stringify(pending), 900);
 
     const link = `${process.env.FRONTEND_URL}/auth/verify-email?token=${token}`;
-
-    this.emailService.sendVerificationEmail(user!.email, link)
+    this.emailService.sendVerificationEmail(usersData.email, link, lang)
       .catch((err) => console.error('Failed to send verification email:', err));
 
-    return {
-      message: 'Account created! Please check your email to verify your account.',
-    };
+    return { message: 'Account created! Please check your email to verify your account.' };
   }
 
   async login(loginData: LoginDto) {
@@ -48,10 +60,6 @@ export class AuthService {
     const isMatch = await bcrypt.compare(loginData.password, user.password);
     if (!isMatch) {
       throw new UnauthorizedException('Invalid Credentials');
-    }
-
-    if (!user.isEmailVerified) {
-      throw new UnauthorizedException('Please verify your email before logging in');
     }
 
     const payload = { sub: user.userId, username: user.username };
@@ -73,13 +81,20 @@ export class AuthService {
       throw new UnauthorizedException('Invalid token type');
     }
 
-    const stored = await this.redisService.get(`verify:${token}`);
-    if (!stored) {
+    const pendingJson = await this.redisService.get(`pending:${token}`);
+    if (!pendingJson) {
       throw new UnauthorizedException('Verification link already used or expired');
     }
 
-    await this.redisService.del(`verify:${token}`);
-    await this.usersService.markEmailVerified(Number(payload.sub));
+    const pending: PendingSignup = JSON.parse(pendingJson);
+
+    const existingEmail = await this.usersService.findUserByEmail(pending.email);
+    if (existingEmail) throw new ConflictException('Email already taken');
+
+    const existingUsername = await this.usersService.findUser(pending.username);
+    if (existingUsername) throw new ConflictException('Username already taken');
+    await this.redisService.del(`pending:${token}`);
+    await this.usersService.createVerifiedUser(pending);
 
     return { message: 'Email verified successfully! You can now log in.' };
   }
