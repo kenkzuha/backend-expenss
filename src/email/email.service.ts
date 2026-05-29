@@ -168,6 +168,146 @@ export class EmailService {
     };
   }
 
+  private getForgotPassTemplate(link: string, lang: string): { subject: string; html: string }{
+    const templates: Record<string, { subject: string; heading: string; desc: string; expiry: string; button: string; ignore: string }> = {
+      en: {
+        subject: 'Expenss Account Password Reset',
+        heading: 'Reset your password',
+        desc: 'Click the button below to reset your password',
+        expiry: 'This link expires in <strong>15 minutes</strong>.',
+        button: 'Reset Password',
+        ignore: "If you didn't request this, you can safely ignore this email.",
+      },
+      ja: {
+        subject: 'Expenssアカウントのパスワード変更',
+        heading: 'パスワードの変更',
+        desc: '下のボタンをクリックしてアカウントのパスワードを変更してください',
+        expiry: 'このリンクの有効期限は<strong>15分</strong>です。',
+        button: '変更',
+        ignore: 'Expenssのアカウントのパスワード変更をリクエストしない場合は、このメールを無視してください。',
+      },
+      id: {
+        subject: 'Reset Password akun Expenss Anda',
+        heading: 'Reset password akun anda',
+        desc: 'Klik link dibawah ini untuk mengubah password akun anda',
+        expiry: 'Tautan ini kedaluwarsa dalam <strong>15 menit</strong>.',
+        button: 'Ubah password',
+        ignore: 'Jika Anda tidak mengajukan permintaan ini, Anda dapat mengabaikan email ini.',
+      },
+    };
+
+    const t = templates[lang] ?? templates['en'];
+
+    return {
+      subject: t.subject,
+      html: `
+      <!DOCTYPE html>
+<html lang="${lang}">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="margin:0; padding:0; background-color:#f0f0f2; font-family: Arial, sans-serif;">
+
+  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#f0f0f2; padding: 40px 16px;">
+    <tr>
+      <td align="center">
+        <table width="520" cellpadding="0" cellspacing="0" border="0" style="max-width:520px; width:100%;">
+
+          <!-- Logo header -->
+          <tr>
+            <td style="padding-bottom: 24px;">
+              ${this.LOGO}
+            </td>
+          </tr>
+
+          <!-- Main card -->
+          <tr>
+            <td style="background-color:#ffffff; border-radius:14px; border: 1px solid rgba(0,0,0,0.10); overflow:hidden;">
+
+              <!-- Blue top bar -->
+              <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td style="background-color:#2563eb; height:4px; font-size:0;">&nbsp;</td>
+                </tr>
+              </table>
+
+              <!-- Card content -->
+              <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td style="padding: 40px 40px 32px;">
+
+                    <!-- Heading -->
+                    <h1 style="margin:0 0 16px; font-size:22px; font-weight:700; color:#0d0d0d; letter-spacing:-0.5px;">
+                      ${t.heading}
+                    </h1>
+
+                    <!-- Description -->
+                    <p style="margin:0 0 12px; font-size:15px; color:#5a5a6a; line-height:1.6;">
+                      ${t.desc}
+                    </p>
+
+                    <!-- Expiry notice -->
+                    <p style="margin:0 0 28px; font-size:14px; color:#9898a8; line-height:1.6;">
+                      ${t.expiry}
+                    </p>
+
+                    <!-- CTA Button -->
+                    <table cellpadding="0" cellspacing="0" border="0">
+                      <tr>
+                        <td style="background-color:#2563eb; border-radius:10px;">
+                          <a href="${link}"
+                             style="display:inline-block; padding:13px 32px; font-size:15px;
+                                    font-weight:600; color:#ffffff; text-decoration:none;
+                                    letter-spacing:-0.2px;">
+                            ${t.button}
+                          </a>
+                        </td>
+                      </tr>
+                    </table>
+
+                    <!-- Divider -->
+                    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin: 32px 0 0;">
+                      <tr>
+                        <td style="border-top: 1px solid rgba(0,0,0,0.08); font-size:0;">&nbsp;</td>
+                      </tr>
+                    </table>
+
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Footer inside card -->
+              <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td style="background-color:#f7f7f8; padding: 20px 40px; border-top: 1px solid rgba(0,0,0,0.08);">
+                    <p style="margin:0; font-size:12px; color:#9898a8; line-height:1.6;">
+                      ${t.ignore}
+                    </p>
+                  </td>
+                </tr>
+              </table>
+
+            </td>
+          </tr>
+
+          <!-- Bottom caption -->
+          <tr>
+            <td style="padding-top: 20px; text-align:center;">
+              <p style="margin:0; font-size:12px; color:#9898a8;">
+                © ${new Date().getFullYear()} Expenss. All rights reserved.
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+
+</body>
+</html>
+      `,
+    };
+  }
+
   private sendResendRequest(payload: object): Promise<{ id: string }> {
     return new Promise((resolve, reject) => {
       const body = JSON.stringify(payload);
@@ -211,5 +351,16 @@ export class EmailService {
       html,
     });
     console.log('Email sent successfully, id:', result.id);
+  }
+
+  async sendForgotPass(email: string, link: string, lang: string = 'en'){
+    const { subject, html } = this.getForgotPassTemplate(link, lang);
+    const result = await this.sendResendRequest({
+      from: process.env.RESEND_FROM_EMAIL!,
+      to: email,
+      subject,
+      html,
+    });
+    console.log('Forgot pass Email sent, id: ', result.id);
   }
 }

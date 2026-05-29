@@ -1,7 +1,7 @@
-import { ConflictException, Injectable, UnauthorizedException } from '@nestjs/common';
+import { ConflictException, HttpException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { UsersDto } from 'src/users/users.dto';
 import { UsersService } from 'src/users/users.service';
-import { LoginDto } from './auth.dto';
+import { ForgotPasswordDto, LoginDto, ResetPasswordDto } from './auth.dto';
 import bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
 import { RedisService } from 'src/redis/redis.service';
@@ -23,6 +23,12 @@ export class AuthService {
   ) {}
 
   async saveUsers(usersData: UsersDto, lang: string = 'en') {
+    const signupRateKey = `ratelimit:signup:${usersData.email}`;
+    const attempts = await this.redisService.incr(signupRateKey, 3600);
+    if(attempts > 5){
+      throw new HttpException('Too many requests. Please wait before trying again', 429);
+    }
+
     const existingEmail = await this.usersService.findUserByEmail(usersData.email);
     if (existingEmail) throw new ConflictException('Email already taken');
 
@@ -97,5 +103,51 @@ export class AuthService {
     await this.usersService.createVerifiedUser(pending);
 
     return { message: 'Email verified successfully! You can now log in.' };
+  }
+
+  async forgotPass(data: ForgotPasswordDto, lang: string = 'en'){
+    const forgotRateKey = `ratelimit:forgot:${data.email}`;
+    const attempts = await this.redisService.incr(forgotRateKey, 900);
+    if(attempts > 3){
+      throw new HttpException('Too many requests. Please wait before trying again', 429);
+    }
+
+    const userEmail = await this.usersService.findUserByEmail(data.email);
+    if(!userEmail) return { message: "Password Reset email sent! Please check your email" };
+
+    const token = await this.jwtService.signAsync(
+      { email: userEmail.email, type: 'reset-pass' },
+      { expiresIn: '15m' }
+    );
+
+    await this.redisService.set(`reset:${token}`, String(userEmail.userId), 900);
+    const link = `${process.env.FRONTEND_URL}/auth/reset-pass?token=${token}`;
+
+    this.emailService.sendForgotPass(data.email, link, lang)
+      .catch((err) => console.log('Error sending email ', err));
+    
+      return { message: 'Password Reset email sent! Please check your email' };
+  }
+
+  async resetPass(body: ResetPasswordDto) {
+    let payload: any;
+
+    try {
+      payload = await this.jwtService.verifyAsync(body.token);
+    } catch {
+      throw new UnauthorizedException('Invalid or expired reset link');
+    }
+
+    if(payload.type !== 'reset-pass') throw new UnauthorizedException('Invalid token type');
+
+    const pendingJson = await this.redisService.get(`reset:${body.token}`);
+    if(!pendingJson) throw new UnauthorizedException('Reset link already used or expired');
+
+    const userId = pendingJson;
+
+    await this.redisService.del(`reset:${body.token}`);
+    const hashedPassword = await bcrypt.hash(body.newPassword, 10);
+
+    return await this.usersService.userChangePassword(userId, hashedPassword);
   }
 }

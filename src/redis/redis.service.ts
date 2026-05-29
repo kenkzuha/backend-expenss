@@ -20,4 +20,13 @@ export class RedisService implements OnModuleDestroy {
   onModuleDestroy() {
     this.client.disconnect();
   }
+
+  async incr(key: string, ttlSeconds: number): Promise<number> {
+    const count = await this.client.incr(key);
+
+    if(count === 1){
+      await this.client.expire(key, ttlSeconds);
+    }
+    return count;
+  }
 }

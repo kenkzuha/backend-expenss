@@ -1,4 +1,4 @@
-import { Injectable, InternalServerErrorException } from '@nestjs/common';
+import { Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { UsersEntity } from './users.entity';
 import { Repository } from 'typeorm';
@@ -31,5 +31,13 @@ export class UsersService {
 
   async findUserByEmail(email: string) {
     return await this.usersRepository.findOne({ where: { email } });
+  }
+
+  async userChangePassword(id: string, password: string){
+    const user =  await this.usersRepository.findOne({ where: { userId: Number(id) } });
+    if(!user) throw new NotFoundException('User not found');
+    user.password = password;
+    await this.usersRepository.save(user);
+    return { message: 'Password changed successfully' };
   }
 }

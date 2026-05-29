@@ -1,7 +1,7 @@
 import { Body, Controller, Get, Headers, Post, Query, Req, Res, UseGuards } from '@nestjs/common';
 import { UsersDto } from 'src/users/users.dto';
 import { AuthService } from './auth.service';
-import { LoginDto } from './auth.dto';
+import { ForgotPasswordDto, LoginDto, ResetPasswordDto } from './auth.dto';
 import { AuthGuard } from './auth.guard';
 import type { Response, Request } from 'express';
 
@@ -47,5 +47,15 @@ export class AuthController {
   @Get('verify-email')
   async verifyEmail(@Query('token') token: string) {
     return this.authService.verifyEmail(token);
+  }
+
+  @Post('forgot-pass')
+  async forgotPass(@Body() body: ForgotPasswordDto, @Headers('accept-language') lang: string){
+    return this.authService.forgotPass(body, lang || 'en');
+  }
+
+  @Post('reset-pass')
+  async resetPass(@Body() body: ResetPasswordDto){
+    return this.authService.resetPass(body);
   }
 }
