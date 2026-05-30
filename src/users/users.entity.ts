@@ -16,4 +16,5 @@ export class UsersEntity {
 
   @Column({ default: false })
   isEmailVerified!: boolean;
+
 }

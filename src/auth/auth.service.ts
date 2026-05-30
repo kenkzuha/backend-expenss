@@ -57,16 +57,25 @@ export class AuthService {
   }
 
   async login(loginData: LoginDto) {
+    const loginKey = `ratelimit:login:${loginData.username}`;
+    const attempts = await this.redisService.get(loginKey);
+    if(attempts && Number(attempts) >= 5){
+      throw new HttpException('Too many requests. Please wait before trying again', 429);
+    }
+
     const user = await this.usersService.findUser(loginData.username);
 
     if (!user) {
+      await this.redisService.incr(loginKey, 900);
       throw new UnauthorizedException('Invalid Credentials');
     }
 
     const isMatch = await bcrypt.compare(loginData.password, user.password);
     if (!isMatch) {
+      await this.redisService.incr(loginKey, 900);
       throw new UnauthorizedException('Invalid Credentials');
     }
+    await this.redisService.del(loginKey);
 
     const payload = { sub: user.userId, username: user.username };
     return {
